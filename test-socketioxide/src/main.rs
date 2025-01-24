@@ -7,20 +7,12 @@ use socketioxide::{
     SocketIo,
 };
 use std::net::SocketAddr;
-use hyper::header::AUTHORIZATION;
 use tokio::net::TcpListener;
-use utils::fake_validate_jwt_token;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn on_connect(socket: SocketRef) {
-    if !fake_validate_jwt_token(socket.req_parts().headers.get(AUTHORIZATION)) {
-        socket.emit("connect_error", "Unauthorized").unwrap();
-        socket.disconnect().unwrap();
-        return;
-    };
-
     socket.on("message", |socket: SocketRef, Data::<Value>(data)| {
         socket.emit("message-back", &data).ok();
     });
@@ -28,7 +20,10 @@ fn on_connect(socket: SocketRef) {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (svc, io) = SocketIo::builder().max_payload(10).max_buffer_size(10).build_svc();
+    let (svc, io) = SocketIo::builder()
+        .max_payload(10)
+        .max_buffer_size(10)
+        .build_svc();
     io.ns("/", on_connect);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
